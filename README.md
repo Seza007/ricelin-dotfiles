@@ -45,7 +45,7 @@ matugen pulls a palette from each wallpaper and recolors the pill, terminal, win
 One line, straight through the pipe:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Gakuseei/Ricelin/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/notesiitm5g-coder/ricelin-dotfiles/main/install.sh | bash
 ```
 
 `install.sh` is a thin bootstrap: it detects your distro (Arch, Debian, Fedora,
@@ -60,7 +60,7 @@ Then start `Hyprland` from a TTY.
 Skip the wizard with flags, passed straight through the pipe:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Gakuseei/Ricelin/main/install.sh | bash -s -- --quickstart
+curl -fsSL https://raw.githubusercontent.com/notesiitm5g-coder/ricelin-dotfiles/main/install.sh | bash -s -- --quickstart
 ```
 
 ```

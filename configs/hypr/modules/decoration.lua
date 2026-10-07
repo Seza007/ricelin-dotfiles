@@ -24,7 +24,7 @@ hl.config({
     },
     general = {
         gaps_in     = 6,
-        gaps_out    = 12,
+        gaps_out    = 6,
         border_size = 2,
         layout      = "master",
         resize_on_border = true,
@@ -32,13 +32,13 @@ hl.config({
         ["col.inactive_border"] = inactive,
     },
     decoration = {
-        rounding         = 12,
+        rounding         = 6,
         rounding_power   = 4,
         active_opacity   = 1.00,
-        inactive_opacity = 1.00,
+        inactive_opacity = 0.95,
         shadow = {
             enabled      = true,
-            range        = 12,
+            range        = 4,
             render_power = 3,
             color        = 0xaa14110f,
         },

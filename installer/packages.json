@@ -160,6 +160,16 @@
       "note": "off Arch there is no native package; the Flathub build com.dec05eba.gpu_screen_recorder is the fallback",
       "repo": { "gentoo": "overlay:guru" }, "fallback": "flatpak", "flatpak_id": "com.dec05eba.gpu_screen_recorder" },
 
+    { "id": "hyprexpose", "group": "core", "required": true, "desc": "Workspace overview daemon behind Super+Tab, started by autostart", "aur": true,
+      "names": { "arch": "hyprexpose-git", "debian": null, "fedora": null, "suse": null, "gentoo": null },
+      "note": "only packaged in the AUR; other families have no package, so Super+Tab stays inert there",
+      "fallback": null },
+
+    { "id": "obsidian", "group": "core", "required": true, "desc": "Notes app the login autostart opens through fish's obs (vault git sync)", "aur": false,
+      "names": { "arch": "obsidian", "debian": null, "fedora": null, "suse": null, "gentoo": null },
+      "note": "obs calls the obsidian binary; the Flathub build exports md.obsidian.Obsidian instead, so off Arch install it yourself and put an obsidian wrapper on PATH",
+      "fallback": null },
+
     { "id": "dolphin", "group": "full", "required": false, "desc": "KDE file manager", "aur": false,
       "names": { "arch": "dolphin", "debian": "dolphin", "fedora": "dolphin", "suse": "dolphin", "gentoo": "kde-apps/dolphin" }, "fallback": null },
 

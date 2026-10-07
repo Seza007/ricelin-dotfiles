@@ -592,9 +592,11 @@ def _selftest():
         idletxt = (root / "hypr" / "hypridle.conf").read_text()
         check(str(Path.home()) + "/.config/hypr/scripts/lock.sh" in idletxt,
               "hypridle lock_cmd points at the real home")
-        ghttxt = (root / "hypr" / "ghosttype.lua").read_text()
-        check(str(Path.home()) + "/Applications/GhostType.AppImage" in ghttxt,
-              "ghosttype.lua AppImage path points at the real home")
+        # ghosttype.lua is upstream-only; this fork does not ship it.
+        if (CONFIGS / "hypr" / "ghosttype.lua").is_file():
+            ghttxt = (root / "hypr" / "ghosttype.lua").read_text()
+            check(str(Path.home()) + "/Applications/GhostType.AppImage" in ghttxt,
+                  "ghosttype.lua AppImage path points at the real home")
         fishtxt = (root / "fish" / "config.fish").read_text()
         check("cachyos-fish-config" not in fishtxt and "grok" not in fishtxt
               and "torii-greeting" in fishtxt,
