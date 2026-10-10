@@ -35,3 +35,14 @@ function obs
         setsid -f obsidian . >/dev/null 2>&1
     end
 end
+
+# ls: names in plain text grey, the "/" (and other type marks like * and @) in the
+# theme accent. GNU ls prints the mark after the "rs" reset sequence, so rs carries
+# the accent (256-colour slot 17, written by wallcolors.py) and every type gets an
+# explicit colour so the accent cannot leak into the next name. The default red/green/
+# yellow codes (31-33) are dark slots in this palette, so they become the plain grey too.
+if status is-interactive; and command -sq dircolors
+    set -gx LS_COLORS (dircolors -b | string replace -rf ".*LS_COLORS='([^']*)'.*" '$1' | string replace -ra ';3[123](?=[;:])' ';37'):"rs=0;38;5;17:di=0;37:fi=0;37:ln=0;37:ex=0;37"
+end
+# Prompt path: grey one step darker than normal text (ANSI 5 in the generated palette).
+set -g fish_color_cwd magenta

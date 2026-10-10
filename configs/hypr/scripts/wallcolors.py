@@ -175,6 +175,9 @@ def main():
     for i in range(16):
         src = i + 1 if 1 <= i <= 6 else i
         lines.append(f'palette = {i}={b["base%02x" % src]}')
+    # Slot 17 (256-colour cube, practically unused) carries the theme accent so
+    # fish's LS_COLORS can paint the folder slash in it and follow the wallpaper.
+    lines.append(f'palette = 17={pill["primary"]}')
     (CACHE / "ghostty-colors").write_text("\n".join(lines) + "\n")
     return 0
 
