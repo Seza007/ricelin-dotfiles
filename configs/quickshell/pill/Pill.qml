@@ -86,6 +86,10 @@ Item {
     readonly property var wifiNets: (wifiDev && wifiDev.networks) ? wifiDev.networks.values : []
     readonly property var wifiActive: wifiNets.find(function(n) { return n && n.connected }) || null
     readonly property real wifiLevel: (wifiActive && wifiActive.signalStrength) || 0
+    readonly property var wiredDev: netDevices.find(function(d) { return d && d.type === DeviceType.Wired }) || null
+    readonly property bool wiredUp: wiredDev !== null && wiredDev.hasLink === true
+    /** The network icon shows the cable when there is no Wi-Fi adapter, or Wi-Fi is not connected but the cable has link. */
+    readonly property bool netIsWired: wiredDev !== null && (wifiDev === null || (wiredUp && wifiActive === null))
     readonly property var btAdapter: (typeof Bluetooth !== "undefined" && Bluetooth) ? Bluetooth.defaultAdapter : null
     readonly property bool btOn: btAdapter ? btAdapter.enabled === true : false
     readonly property bool surfaceOpen: surface.length > 0
@@ -1421,18 +1425,29 @@ Item {
             Row {
                 id: quickRow
                 anchors.verticalCenter: parent.verticalCenter
-                visible: (pill.wifiDev !== null && Flags.showWifi) || (pill.btAdapter !== null && Flags.showBt) || Flags.showMixer || Flags.showMusic
+                visible: ((pill.wifiDev !== null || pill.wiredDev !== null) && Flags.showWifi) || (pill.btAdapter !== null && Flags.showBt) || Flags.showMixer || Flags.showMusic
                 spacing: 12 * pill.s
 
                 Item {
                     id: wifiIcon
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: pill.wifiDev !== null && Flags.showWifi
+                    visible: (pill.wifiDev !== null || pill.wiredDev !== null) && Flags.showWifi
                     width: 15 * pill.s
                     height: 15 * pill.s
 
+                    GlyphIcon {
+                        anchors.centerIn: parent
+                        visible: pill.netIsWired
+                        width: 16 * pill.s
+                        height: 16 * pill.s
+                        name: "ethernet"
+                        color: pill.wiredUp ? Theme.iconDim : Qt.alpha(Theme.iconDim, 0.4)
+                        stroke: 1.7
+                    }
+
                     WifiGlyph {
                         anchors.centerIn: parent
+                        visible: !pill.netIsWired
                         s: pill.s
                         level: pill.wifiLevel
                         on: pill.wifiOn
@@ -1449,7 +1464,7 @@ Item {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: (e) => {
                             if (e.button === Qt.RightButton) {
-                                if (typeof Networking !== "undefined" && Networking)
+                                if (pill.wifiDev !== null && typeof Networking !== "undefined" && Networking)
                                     Networking.wifiEnabled = !Networking.wifiEnabled;
                                 return;
                             }

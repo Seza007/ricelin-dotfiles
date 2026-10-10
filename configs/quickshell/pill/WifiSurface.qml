@@ -31,8 +31,36 @@ PillSurface {
         return ((b ? b.signalStrength : 0) || 0) - ((a ? a.signalStrength : 0) || 0)
     })
     readonly property var activeNet: nets.find(function(n) { return n && n.connected }) || null
-    readonly property string statusText: !wifiOn ? "Off"
-        : (activeNet ? (activeNet.name || "Connected") : "Not connected")
+    readonly property bool hasWifi: wifiDev !== null
+
+    /**
+     * Wired side: the first Ethernet device Quickshell reports. `hasLink` is the
+     * carrier, `linkSpeed` the negotiated Mb/s (0 while unknown, then sysfs fills in).
+     */
+    readonly property var wiredDev: devices.find(function(d) { return d && d.type === DeviceType.Wired }) || null
+    readonly property bool hasWired: wiredDev !== null
+    readonly property bool wiredUp: hasWired && wiredDev.hasLink === true
+    property string wiredConn: ""
+    property string wiredIp: ""
+    property int wiredSysSpeed: 0
+    readonly property int wiredMbps: (hasWired && wiredDev.linkSpeed > 0) ? wiredDev.linkSpeed : wiredSysSpeed
+    readonly property string wiredSpeedText: speedText(wiredMbps)
+    readonly property string wiredDetail: {
+        if (!wiredUp)
+            return "No cable";
+        var p = [];
+        if (wiredSpeedText.length) p.push(wiredSpeedText);
+        if (wiredIp.length) p.push(wiredIp);
+        return p.length ? p.join(" · ") : "Connected";
+    }
+
+    /** True when the cable, not Wi-Fi, is what carries the traffic: no adapter, radio off, or no network joined. */
+    readonly property bool wiredPrimary: wiredUp && (!hasWifi || !wifiOn || activeNet === null)
+
+    readonly property string statusText: wiredPrimary ? (hasWifi ? "Wired" : "Connected") + (wiredSpeedText.length ? " · " + wiredSpeedText : "")
+        : (!hasWifi ? (hasWired ? "No cable" : "No adapter")
+        : (!wifiOn ? "Off"
+        : (activeNet ? (activeNet.name || "Connected") : "Not connected")))
 
     property var securityMap: ({})
     property var knownProfiles: ({})
@@ -83,6 +111,17 @@ PillSurface {
 
     implicitHeight: hsBlock.y + hsBlock.height
 
+    /** Mb/s as a link-speed label: 100 -> "100 Mb/s", 2500 -> "2.5 Gb/s", unknown -> "". */
+    function speedText(mbps) {
+        if (!mbps || mbps <= 0)
+            return "";
+        if (mbps >= 1000) {
+            var g = mbps / 1000;
+            return (g === Math.floor(g) ? g.toString() : g.toFixed(1)) + " Gb/s";
+        }
+        return mbps + " Mb/s";
+    }
+
     function isSecured(ssid) {
         var sec = securityMap[ssid];
         return sec !== undefined && sec !== "" && sec !== "--";
@@ -93,6 +132,8 @@ PillSurface {
         profProc.running = true;
         if (root.wifiDev)
             detailProc.running = true;
+        if (root.wiredDev)
+            wiredProc.running = true;
     }
 
     /**
@@ -260,6 +301,10 @@ PillSurface {
 
     onWifiOnChanged: if (!wifiOn) stopScan()
 
+    /** Cable plugged, unplugged or renegotiated: re-read the address and name. */
+    onWiredUpChanged: if (active && hasWired) wiredProc.running = true
+    onWiredMbpsChanged: if (active && hasWired && wiredMbps === 0) wiredProc.running = true
+
     onExpandedSsidChanged: if (revealedSsid !== expandedSsid) hidePassword()
 
     /** The known-profile spinner ends when the attempted network reports connected; the detail line follows every active-network change. */
@@ -314,6 +359,7 @@ PillSurface {
             + 'else '
             +   'nmcli connection add type wifi ifname "$3" con-name "$c" autoconnect no 802-11-wireless.ssid "$1" 802-11-wireless.mode ap 802-11-wireless-security.key-mgmt wpa-psk 802-11-wireless-security.psk "$2" ipv4.method shared; '
             + 'fi; '
+            + 'nmcli radio wifi on; '
             + 'nmcli connection up "$c"',
             "sh", hsName, hsPw, hsIface];
         hsApplyProc.running = true;
@@ -492,6 +538,39 @@ PillSurface {
         }
     }
 
+    /**
+     * Wired detail: active connection name, IPv4 and the kernel's link speed as a
+     * fallback when NetworkManager has not published one. Marker-prefixed so a
+     * missing line cannot shift the parse. The interface is its own argv element.
+     */
+    Process {
+        id: wiredProc
+        command: ["sh", "-c",
+            "echo \"CN $(nmcli -t -g GENERAL.CONNECTION dev show \"$1\" 2>/dev/null)\"; "
+            + "ip -4 -o addr show dev \"$1\" scope global 2>/dev/null | awk '{split($4,a,\"/\"); print \"IP \" a[1]; exit}'; "
+            + "echo \"SP $(cat \"/sys/class/net/$1/speed\" 2>/dev/null)\"",
+            "sh", root.wiredDev ? (root.wiredDev.name || "") : ""]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var cn = "";
+                var ip = "";
+                var sp = 0;
+                var lines = this.text.split("\n");
+                for (var i = 0; i < lines.length; i++) {
+                    if (lines[i].indexOf("CN ") === 0)
+                        cn = lines[i].slice(3).trim();
+                    else if (lines[i].indexOf("IP ") === 0)
+                        ip = lines[i].slice(3).trim();
+                    else if (lines[i].indexOf("SP ") === 0)
+                        sp = parseInt(lines[i].slice(3).trim(), 10);
+                }
+                root.wiredConn = (cn === "--") ? "" : cn;
+                root.wiredIp = ip;
+                root.wiredSysSpeed = (sp > 0) ? sp : 0;
+            }
+        }
+    }
+
     Process {
         id: connProc
         stdinEnabled: true
@@ -599,7 +678,7 @@ PillSurface {
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: "WIFI"
+                text: root.hasWifi ? "WIFI" : "WIRED"
                 color: Theme.subtle
                 font.family: Theme.font
                 font.pixelSize: 10 * root.s
@@ -611,7 +690,7 @@ PillSurface {
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "· " + root.statusText
-                color: root.activeNet ? Theme.vermLit : Theme.faint
+                color: (root.activeNet || root.wiredPrimary) ? Theme.vermLit : Theme.faint
                 font.family: Theme.font
                 font.pixelSize: 9.5 * root.s
                 font.weight: Font.Medium
@@ -626,7 +705,7 @@ PillSurface {
 
             Item {
                 anchors.verticalCenter: parent.verticalCenter
-                visible: root.wifiOn
+                visible: root.hasWifi && root.wifiOn
                 width: 16 * root.s
                 height: 16 * root.s
 
@@ -661,6 +740,7 @@ PillSurface {
             LinkToggle {
                 s: root.s
                 anchors.verticalCenter: parent.verticalCenter
+                visible: root.hasWifi
                 on: root.wifiOn
                 onToggled: {
                     if (typeof Networking !== "undefined" && Networking)
@@ -680,17 +760,121 @@ PillSurface {
         color: Theme.hair
     }
 
+    /**
+     * Wired card: connection name, carrier, negotiated speed and address. Always
+     * shown when an Ethernet device exists, so a cable stays visible next to the
+     * Wi-Fi list; with no adapter it is the whole page.
+     */
     Item {
-        id: listFrame
+        id: wiredBlock
         anchors.top: divider.bottom
-        anchors.topMargin: 8 * root.s
+        anchors.topMargin: root.hasWired || !root.hasWifi ? 8 * root.s : 0
         anchors.left: parent.left
         anchors.right: parent.right
-        height: root.wifiOn ? Math.min(Math.max(netCol.implicitHeight, 26 * root.s), 280 * root.s) : 0
+        visible: root.hasWired || !root.hasWifi
+        height: visible ? wiredCol.implicitHeight : 0
+        clip: true
+
+        Column {
+            id: wiredCol
+            width: parent.width
+            spacing: 6 * root.s
+
+            Rectangle {
+                visible: root.hasWired
+                width: parent.width
+                height: 34 * root.s
+                radius: 10 * root.s
+                color: root.wiredUp ? Qt.rgba(Theme.verm.r, Theme.verm.g, Theme.verm.b, 0.14) : "transparent"
+
+                GlyphIcon {
+                    id: wiredGlyph
+                    anchors.left: parent.left
+                    anchors.leftMargin: 8 * root.s
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 17 * root.s
+                    height: 17 * root.s
+                    name: "ethernet"
+                    color: root.wiredUp ? Theme.vermLit : Theme.iconDim
+                    stroke: 1.7
+                }
+
+                Column {
+                    anchors.left: wiredGlyph.right
+                    anchors.leftMargin: 11 * root.s
+                    anchors.right: wiredDot.left
+                    anchors.rightMargin: 8 * root.s
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 1 * root.s
+
+                    Text {
+                        width: parent.width
+                        text: root.wiredConn.length ? root.wiredConn : "Ethernet"
+                        color: root.wiredUp ? Theme.vermLit : Theme.cream
+                        font.family: Theme.font
+                        font.pixelSize: 12.5 * root.s
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                    }
+                    Text {
+                        width: parent.width
+                        text: root.wiredDetail
+                        color: root.wiredUp ? Theme.flameGlow : Theme.dim
+                        font.family: Theme.font
+                        font.pixelSize: 9.5 * root.s
+                        font.weight: Font.Medium
+                        font.features: { "tnum": 1 }
+                        elide: Text.ElideRight
+                    }
+                }
+
+                Rectangle {
+                    id: wiredDot
+                    anchors.right: parent.right
+                    anchors.rightMargin: 12 * root.s
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 5 * root.s
+                    height: 5 * root.s
+                    radius: width / 2
+                    color: root.wiredUp ? Theme.flameGlow : Theme.faint
+                }
+            }
+
+            Text {
+                visible: !root.hasWired && !root.hasWifi
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                topPadding: 6 * root.s
+                bottomPadding: 6 * root.s
+                text: "No network adapters found"
+                color: Theme.faint
+                font.family: Theme.font
+                font.pixelSize: 10.5 * root.s
+            }
+
+            Text {
+                visible: root.hasWired && !root.hasWifi
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                text: "No Wi-Fi adapter · hotspot unavailable"
+                color: Theme.faint
+                font.family: Theme.font
+                font.pixelSize: 9.5 * root.s
+            }
+        }
+    }
+
+    Item {
+        id: listFrame
+        anchors.top: wiredBlock.bottom
+        anchors.topMargin: root.hasWifi && root.wifiOn ? 8 * root.s : 0
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: (root.hasWifi && root.wifiOn) ? Math.min(Math.max(netCol.implicitHeight, 26 * root.s), 280 * root.s) : 0
 
         Text {
             anchors.centerIn: parent
-            visible: root.wifiOn && root.nets.length === 0
+            visible: root.hasWifi && root.wifiOn && root.nets.length === 0
             text: "Searching networks…"
             color: Theme.faint
             font.family: Theme.font
@@ -1100,11 +1284,11 @@ PillSurface {
     Item {
         id: hsBlock
         anchors.top: listFrame.bottom
-        anchors.topMargin: 8 * root.s
+        anchors.topMargin: root.hasWifi ? 8 * root.s : 0
         anchors.left: parent.left
         anchors.right: parent.right
-        visible: root.wifiOn
-        height: root.wifiOn ? hsCol.implicitHeight + 9 * root.s : 0
+        visible: root.hasWifi
+        height: root.hasWifi ? hsCol.implicitHeight + 9 * root.s : 0
         clip: true
 
         Rectangle {
@@ -1226,7 +1410,7 @@ PillSurface {
                         font.weight: Font.DemiBold
                     }
                     Text {
-                        text: root.hsBusy ? "…" : (root.hsActive ? "Active" : "Off")
+                        text: root.hsBusy ? "…" : (root.hsActive ? "Active" + (root.wiredUp ? " · sharing wired" : (root.activeNet ? " · sharing Wi-Fi" : "")) : "Off")
                         color: root.hsActive ? Theme.flameGlow : Theme.dim
                         font.family: Theme.font
                         font.pixelSize: 9.5 * root.s
