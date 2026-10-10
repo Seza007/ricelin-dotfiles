@@ -11,7 +11,7 @@
 
 set -e
 
-REPO_URL="https://github.com/notesiitm5g-coder/ricelin-dotfiles.git"
+REPO_URL="https://github.com/Seza007/ricelin-dotfiles.git"
 DIR="${XDG_DATA_HOME:-$HOME/.local/share}/ricelin"
 
 # os-release ID / ID_LIKE tokens per family, mirroring installer/distro.py so the
@@ -119,7 +119,7 @@ main() {
 		&& ! has_flag --reinstall "$@" && ! has_flag --uninstall "$@"; then
 		say "Ricelin is already installed."
 		say "  Update:       open Settings > Updates in the pill, or run: ricelin update"
-		say "  Re-install:   curl -fsSL https://raw.githubusercontent.com/notesiitm5g-coder/ricelin-dotfiles/main/install.sh | sh -s -- --reinstall"
+		say "  Re-install:   curl -fsSL https://raw.githubusercontent.com/Seza007/ricelin-dotfiles/main/install.sh | sh -s -- --reinstall"
 		say "  Uninstall:    ricelin uninstall"
 		exit 0
 	fi
