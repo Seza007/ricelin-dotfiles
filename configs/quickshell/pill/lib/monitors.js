@@ -37,11 +37,16 @@ function parse(jsonText) {
         var modes = (mon.availableModes || [])
             .map(parseMode)
             .filter(function (m) { return m !== null; });
+        // A disabled output reports 0x0@60 (no active mode), which would draw
+        // as a 2px sliver in the map and be impossible to select and re-enable.
+        // Size it as its first listed (preferred) mode instead.
+        var noMode = !mon.width || !mon.height;
+        var size = (noMode && modes.length > 0) ? modes[0] : null;
         return {
             name: mon.name,
-            width: mon.width,
-            height: mon.height,
-            refresh: Math.round(mon.refreshRate),
+            width: size ? size.w : mon.width,
+            height: size ? size.h : mon.height,
+            refresh: size ? size.hz : Math.round(mon.refreshRate),
             scale: mon.scale,
             x: mon.x,
             y: mon.y,
