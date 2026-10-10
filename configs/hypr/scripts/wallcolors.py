@@ -169,8 +169,12 @@ def main():
         f'selection-background = {b["base02"]}',
         f'selection-foreground = {b["base07"]}',
     ]
+    # ANSI slots 1-6 (what ls, the fish prompt path, diffs etc. call red..cyan)
+    # land on the dark end of the base16 ramp, so folders and the cwd sank into
+    # the background. Lift each one step up the ramp; 0, 7 and 8-15 stay put.
     for i in range(16):
-        lines.append(f'palette = {i}={b["base%02x" % i]}')
+        src = i + 1 if 1 <= i <= 6 else i
+        lines.append(f'palette = {i}={b["base%02x" % src]}')
     (CACHE / "ghostty-colors").write_text("\n".join(lines) + "\n")
     return 0
 
