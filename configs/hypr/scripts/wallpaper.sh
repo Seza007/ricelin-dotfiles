@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# The wallpaper daemon is called awww on current Arch and swww on older repos and
+# the source-build fallback; same CLI either way, so use whichever this box has.
+if command -v awww >/dev/null 2>&1; then
+    AWWW=awww; AWWW_DAEMON=awww-daemon
+else
+    AWWW=swww; AWWW_DAEMON=swww-daemon
+fi
+
 flags_file="${XDG_STATE_HOME:-$HOME/.local/state}/ricelin/flags.json"
 WPDIR=$(jq -r '.wallpaperDir // ""' "$flags_file" 2>/dev/null || echo "")
 if [ -z "$WPDIR" ]; then
@@ -32,12 +40,12 @@ is_video() {
 }
 
 ensure_daemon() {
-    awww query >/dev/null 2>&1 && return 0
+    "$AWWW" query >/dev/null 2>&1 && return 0
     local attempt i
     for attempt in 1 2 3 4 5; do
-        awww-daemon >/dev/null 2>&1 &
+        "$AWWW_DAEMON" >/dev/null 2>&1 &
         for i in $(seq 1 15); do
-            awww query >/dev/null 2>&1 && return 0
+            "$AWWW" query >/dev/null 2>&1 && return 0
             sleep 0.2
         done
     done
@@ -141,7 +149,7 @@ apply_visual() {
             make_still "$pic" "$st" && show="$st"
             ;;
     esac
-    awww img ${oflag[@]+"${oflag[@]}"} "$show" \
+    "$AWWW" img ${oflag[@]+"${oflag[@]}"} "$show" \
         --transition-type wave \
         --transition-angle 30 \
         --transition-wave "60,30" \
@@ -149,7 +157,7 @@ apply_visual() {
         --transition-step 90
     if [ "$show" != "$pic" ] && ! is_video "$pic"; then
         sleep 0.9
-        awww img ${oflag[@]+"${oflag[@]}"} "$pic" --transition-type none
+        "$AWWW" img ${oflag[@]+"${oflag[@]}"} "$pic" --transition-type none
     fi
 }
 
@@ -246,7 +254,7 @@ restore_all() {
 }
 
 daemon_was_running=true
-awww query >/dev/null 2>&1 || daemon_was_running=false
+"$AWWW" query >/dev/null 2>&1 || daemon_was_running=false
 ensure_daemon || exit 0
 
 cmd="${1:-}"

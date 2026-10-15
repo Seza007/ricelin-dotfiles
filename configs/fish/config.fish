@@ -7,7 +7,7 @@ function fish_greeting
 end
 
 # Added by Antigravity CLI installer
-set -gx PATH "/home/eternal_whisker/.local/bin" $PATH
+fish_add_path -g $HOME/.local/bin
 
 # Start ssh-agent if one isn't running
 if not pgrep -u "$USER" ssh-agent >/dev/null
