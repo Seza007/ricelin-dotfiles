@@ -29,7 +29,8 @@ CONFIGS = REPO_ROOT / "configs"
 CONFIG_ROOT = Path(os.environ.get("XDG_CONFIG_HOME") or (Path.home() / ".config"))
 
 # The deploy set: (name, source under configs/, dest under ~/.config). The first
-# five land as whole dirs; kdeglobals and the session target are single files
+# five land as whole dirs; kdeglobals, the Obsidian Wayland flags and the session
+# target are single files
 # that sit at a different path than their source in the clone.
 DEPLOY_SET = [
     ("hypr",       "hypr",                                  "hypr"),
@@ -38,6 +39,7 @@ DEPLOY_SET = [
     ("fish",       "fish",                                  "fish"),
     ("fastfetch",  "fastfetch",                             "fastfetch"),
     ("kdeglobals", "kde/kdeglobals",                        "kdeglobals"),
+    ("obsidian",   "obsidian-flags.conf",                   "obsidian-flags.conf"),
     ("session",    "systemd/user/hyprland-session.target",  "systemd/user/hyprland-session.target"),
 ]
 

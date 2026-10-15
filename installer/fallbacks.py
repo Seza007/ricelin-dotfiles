@@ -116,7 +116,7 @@ def _zig_ensure_step():
             'rm -rf "$HOME/.local/share/%s" && '
             'tar -xf "$a" -C "$HOME/.local/share" && rm -f "$a" && '
             'ln -sf "$HOME/.local/share/%s/zig" "$HOME/.local/bin/zig"; '
-            'fi' % (ZIG_VERSION, shlex.quote(url), name, name)}
+            'fi' % (ZIG_VERSION, '"%s"' % url, name, name)}   # double quotes: $(uname -m) must expand
 
 
 def _cargo(pkg, family):
@@ -346,6 +346,7 @@ def _selftest():
     assert any("zig build" in s.get("shell", "") for s in deb)
     zig = next(s for s in deb if "ziglang.org" in s.get("shell", ""))
     assert ZIG_VERSION in zig["shell"] and "zig version" in zig["shell"]
+    assert "'https://ziglang" not in zig["shell"], "single quotes would stop $(uname -m) expanding in the tarball URL"
     inst = next(s for s in deb if "-p /usr" in s.get("shell", ""))
     assert "sudo env" in inst["shell"], "sudo step must carry PATH past sudo"
 

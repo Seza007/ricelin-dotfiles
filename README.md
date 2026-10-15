@@ -71,6 +71,33 @@ curl -fsSL https://raw.githubusercontent.com/Seza007/ricelin-dotfiles/main/insta
 --dry-run     walk the whole flow and change nothing
 ```
 
+### What the installer covers
+
+Every runtime dependency lives in one file, `installer/packages.json`, with the
+native package name per distro. The installer, the in-app updater and the checks
+below all read it, so adding a tool means one entry there, in the same commit that
+starts using it. Names were checked against the live repos of each family:
+
+| Family | Status |
+|---|---|
+| Arch and derivatives | everything native, AUR for `mpvpaper`, `dotool`, `hyprexpose`, cursor theme, `gpu-screen-recorder` (yay is installed if missing) |
+| Fedora | Hyprland, quickshell and the wallpaper daemon from COPRs; ghostty from Terra |
+| openSUSE | native, quickshell from the OBS repo |
+| Gentoo | native plus the GURU overlay for a few tools |
+| Ubuntu | Hyprland and friends from a PPA |
+| Debian stable | **partial**: Hyprland and its helpers (`hypridle`, `hyprpicker`, ...) are not packaged in trixie, so those steps report as failed and need a manual build |
+
+Source builds (cargo, Zig for ghostty, Go for dotool) and downloads from upstream
+releases (`rishot`, the Nerd Font, the cursor theme) cover what no repo ships. A
+failed package never aborts the rest: the batch retries one by one and the final
+report lists what to do by hand. Check a distro without touching it:
+
+```sh
+python3 installer/ricelin_install.py --dry-run --quickstart --full
+```
+
+Selftests: `python3 -B installer/deploy.py`, `pkg.py`, `distro.py`, `fallbacks.py`.
+
 Ricelin is a Hyprland shell. On Niri, Sway or anything else only rishot (the
 screenshot tool) makes sense; grab it from [rishot](https://github.com/Gakuseei/rishot)'s own installer.
 
